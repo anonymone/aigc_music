@@ -162,13 +162,13 @@ def predict_full(model, text, melody, duration, topk, topp, temperature, cfg_coe
         progress((generated, to_generate))
         if INTERRUPTING:
             raise gr.Error("Interrupted.")
-    MODEL.set_custom_progress_callback(_progress)
+    if progress is not None:
+        MODEL.set_custom_progress_callback(_progress)
 
     outs = _do_predictions(
         [text], [melody], duration, progress=True,
         top_k=topk, top_p=topp, temperature=temperature, cfg_coef=cfg_coef)
     return outs[0]
-
 
 def toggle_audio_src(choice):
     if choice == "mic":
@@ -358,50 +358,54 @@ def ui_batched(launch_kwargs):
 
         demo.queue(max_size=8 * 4).launch(**launch_kwargs)
 
+def serverRun(textContetn, audioFile, progress):
+    outputs =  predict_full("melody", textContetn, None, 500, 25, 0, 1.0, 3.0, progress=progress)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--listen',
-        type=str,
-        default='0.0.0.0',
-        help='IP to listen on for connections to Gradio',
-    )
-    parser.add_argument(
-        '--username', type=str, default='', help='Username for authentication'
-    )
-    parser.add_argument(
-        '--password', type=str, default='', help='Password for authentication'
-    )
-    parser.add_argument(
-        '--server_port',
-        type=int,
-        default=8000,
-        help='Port to run the server listener on',
-    )
-    parser.add_argument(
-        '--inbrowser', action='store_true', help='Open in browser'
-    )
-    parser.add_argument(
-        '--share', action='store_true', help='Share the gradio UI'
-    )
+    
+    serverRun("a happy song.", None, None)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument(
+    #     '--listen',
+    #     type=str,
+    #     default='0.0.0.0',
+    #     help='IP to listen on for connections to Gradio',
+    # )
+    # parser.add_argument(
+    #     '--username', type=str, default='', help='Username for authentication'
+    # )
+    # parser.add_argument(
+    #     '--password', type=str, default='', help='Password for authentication'
+    # )
+    # parser.add_argument(
+    #     '--server_port',
+    #     type=int,
+    #     default=8000,
+    #     help='Port to run the server listener on',
+    # )
+    # parser.add_argument(
+    #     '--inbrowser', action='store_true', help='Open in browser'
+    # )
+    # parser.add_argument(
+    #     '--share', action='store_true', help='Share the gradio UI'
+    # )
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    launch_kwargs = {}
-    launch_kwargs['server_name'] = args.listen
+    # launch_kwargs = {}
+    # launch_kwargs['server_name'] = args.listen
 
-    if args.username and args.password:
-        launch_kwargs['auth'] = (args.username, args.password)
-    if args.server_port:
-        launch_kwargs['server_port'] = args.server_port
-    if args.inbrowser:
-        launch_kwargs['inbrowser'] = args.inbrowser
-    if args.share:
-        launch_kwargs['share'] = args.share
+    # if args.username and args.password:
+    #     launch_kwargs['auth'] = (args.username, args.password)
+    # if args.server_port:
+    #     launch_kwargs['server_port'] = args.server_port
+    # if args.inbrowser:
+    #     launch_kwargs['inbrowser'] = args.inbrowser
+    # if args.share:
+    #     launch_kwargs['share'] = args.share
 
-    # Show the interface
-    if IS_BATCHED:
-        ui_batched(launch_kwargs)
-    else:
-        ui_full(launch_kwargs)
+    # # Show the interface
+    # if IS_BATCHED:
+    #     ui_batched(launch_kwargs)
+    # else:
+    #     ui_full(launch_kwargs)
