@@ -171,6 +171,7 @@ def predict_full(model, text, melody, duration, topk, topp, temperature, cfg_coe
         top_k=topk, top_p=topp, temperature=temperature, cfg_coef=cfg_coef)
     return outs[0]
 
+
 def toggle_audio_src(choice):
     if choice == "mic":
         return gr.update(source="microphone", value=None, label="Microphone")
@@ -359,9 +360,10 @@ def ui_batched(launch_kwargs):
 
         demo.queue(max_size=8 * 4).launch(**launch_kwargs)
 
-# http://10.84.185.170:8000/file=/var/folders/b1/0fd1b6hs7lz0fm_mh346lybm0000gn/T/gradio/fccba26d1a8b1a2c10f338eba922eb8dde157bc7/tmp7fjm7ml4.mp4
-def serverRun(textContetn, audioFile, progress):
-    outputs =  predict_full("melody", textContetn, None, 500, 25, 0, 1.0, 3.0, progress=progress)
+# /var/folders/b1/0fd1b6hs7lz0fm_mh346lybm0000gn/T/gradio/fccba26d1a8b1a2c10f338eba922eb8dde157bc7/tmp7fjm7ml4.mp4
+def server_run(textContetn, audio_file, progress):
+    outputs = predict_full("melody", textContetn, None, 500, 25, 0, 1.0, 3.0, progress=progress)
+    return outputs
 
 # flask web service
 app = Flask(__name__)
@@ -380,10 +382,10 @@ def gen_music():
             'error_msg': 'Invalid params, prompt should not be empty'
         })
         return
-    
+    outs = server_run(prompt, None, None)
     response_data = {
         'success': True,
-        'download_url': ''
+        'download_url': 'files/' + outs
     }
     return jsonify(response_data)
 
