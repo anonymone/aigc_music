@@ -24,6 +24,7 @@ from audiocraft.data.audio_utils import convert_audio
 from audiocraft.data.audio import audio_write
 from audiocraft.models import MusicGen
 
+from flask import Flask, request, jsonify, send_from_directory, render_template
 
 MODEL = None  # Last used model
 IS_BATCHED = "facebook/MusicGen" in os.environ.get('SPACE_ID', '')
@@ -358,54 +359,85 @@ def ui_batched(launch_kwargs):
 
         demo.queue(max_size=8 * 4).launch(**launch_kwargs)
 
+# http://10.84.185.170:8000/file=/var/folders/b1/0fd1b6hs7lz0fm_mh346lybm0000gn/T/gradio/fccba26d1a8b1a2c10f338eba922eb8dde157bc7/tmp7fjm7ml4.mp4
 def serverRun(textContetn, audioFile, progress):
     outputs =  predict_full("melody", textContetn, None, 500, 25, 0, 1.0, 3.0, progress=progress)
 
-if __name__ == "__main__":
+# flask web service
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/music')
+def gen_music():
+    prompt = request.args.get('prompt')
+    if not prompt:
+        jsonify({
+            'success': False,
+            'error_code': 5,
+            'error_msg': 'Invalid params, prompt should not be empty'
+        })
+        return
     
-    serverRun("a happy song.", None, None)
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument(
-    #     '--listen',
-    #     type=str,
-    #     default='0.0.0.0',
-    #     help='IP to listen on for connections to Gradio',
-    # )
-    # parser.add_argument(
-    #     '--username', type=str, default='', help='Username for authentication'
-    # )
-    # parser.add_argument(
-    #     '--password', type=str, default='', help='Password for authentication'
-    # )
-    # parser.add_argument(
-    #     '--server_port',
-    #     type=int,
-    #     default=8000,
-    #     help='Port to run the server listener on',
-    # )
-    # parser.add_argument(
-    #     '--inbrowser', action='store_true', help='Open in browser'
-    # )
-    # parser.add_argument(
-    #     '--share', action='store_true', help='Share the gradio UI'
-    # )
+    response_data = {
+        'success': True,
+        'download_url': ''
+    }
+    return jsonify(response_data)
 
-    # args = parser.parse_args()
+@app.route('/files/<string:filename>')
+def download_music(filename):
+    return send_from_directory(os.getcwd() + "/results/", path=filename, as_attachment=False)
 
-    # launch_kwargs = {}
-    # launch_kwargs['server_name'] = args.listen
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8000, debug=True)
 
-    # if args.username and args.password:
-    #     launch_kwargs['auth'] = (args.username, args.password)
-    # if args.server_port:
-    #     launch_kwargs['server_port'] = args.server_port
-    # if args.inbrowser:
-    #     launch_kwargs['inbrowser'] = args.inbrowser
-    # if args.share:
-    #     launch_kwargs['share'] = args.share
+# gradio interface 
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument(
+#         '--listen',
+#         type=str,
+#         default='0.0.0.0',
+#         help='IP to listen on for connections to Gradio',
+#     )
+#     parser.add_argument(
+#         '--username', type=str, default='', help='Username for authentication'
+#     )
+#     parser.add_argument(
+#         '--password', type=str, default='', help='Password for authentication'
+#     )
+#     parser.add_argument(
+#         '--server_port',
+#         type=int,
+#         default=8000,
+#         help='Port to run the server listener on',
+#     )
+#     parser.add_argument(
+#         '--inbrowser', action='store_true', help='Open in browser'
+#     )
+#     parser.add_argument(
+#         '--share', action='store_true', help='Share the gradio UI'
+#     )
 
-    # # Show the interface
-    # if IS_BATCHED:
-    #     ui_batched(launch_kwargs)
-    # else:
-    #     ui_full(launch_kwargs)
+#     args = parser.parse_args()
+
+#     launch_kwargs = {}
+#     launch_kwargs['server_name'] = args.listen
+
+#     if args.username and args.password:
+#         launch_kwargs['auth'] = (args.username, args.password)
+#     if args.server_port:
+#         launch_kwargs['server_port'] = args.server_port
+#     if args.inbrowser:
+#         launch_kwargs['inbrowser'] = args.inbrowser
+#     if args.share:
+#         launch_kwargs['share'] = args.share
+
+#     # Show the interface
+#     if IS_BATCHED:
+#         ui_batched(launch_kwargs)
+#     else:
+#         ui_full(launch_kwargs)
