@@ -213,9 +213,9 @@ def gen_music():
     }
     return jsonify(response_data)
 
-@app.route('/files/<string:filename>')
-def download_music(filename):
-    return send_from_directory(None, path=filename, as_attachment=False)
+@app.route('/files/<path:subpath>')
+def download_music(subpath):
+    return send_from_directory('/', path=subpath, as_attachment=False)
 
 if __name__ == "__main__":
     # server_run("123", None, None)
