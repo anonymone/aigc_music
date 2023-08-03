@@ -192,7 +192,7 @@ def server_run(textContetn, audio_file, progress):
         app.logger.info("music is saved at " + outputs)
         return outputs
     else:
-        outputs = predict_full("small", textContetn, None, 10, 25, 0, 1.0, 3.0, progress=progress)
+        outputs = predict_full("small", textContetn, None, 15, 25, 0, 1.0, 3.0, progress=progress)
         app.logger.info("music is saved at " + outputs)
         return outputs
 
