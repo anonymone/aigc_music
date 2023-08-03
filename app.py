@@ -20,6 +20,8 @@ import logging
 from flask import Flask, request, jsonify, send_from_directory, render_template
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
+import json
+from werkzeug.utils import secure_filename
 
 import torch
 import gradio as gr
@@ -27,8 +29,8 @@ import gradio as gr
 from audiocraft.data.audio_utils import convert_audio
 from audiocraft.data.audio import audio_write
 from audiocraft.models import MusicGen
-
-
+import torchaudio
+from base64 import b64decode
 
 MODEL = None  # Last used model
 IS_BATCHED = "facebook/MusicGen" in os.environ.get('SPACE_ID', '')
@@ -124,7 +126,10 @@ def _do_predictions(texts, melodies, duration, progress=False, **gen_kwargs):
         )
     else:
         outputs = MODEL.generate(texts, progress=progress)
+    print("batch finished", len(texts), time.time() - be)
+    return save_file(outputs=outputs)
 
+def save_file(outputs):
     outputs = outputs.detach().cpu().float()
     out_files = []
     for output in outputs:
@@ -137,10 +142,8 @@ def _do_predictions(texts, melodies, duration, progress=False, **gen_kwargs):
     res = [out_file.result() for out_file in out_files]
     for file in res:
         file_cleaner.add(file)
-    print("batch finished", len(texts), time.time() - be)
     print("Tempfiles currently stored: ", len(file_cleaner.files))
     return res
-
 
 def predict_batched(texts, melodies):
     max_text_length = 512
@@ -184,9 +187,36 @@ def toggle_audio_src(choice):
 
 # /var/folders/b1/0fd1b6hs7lz0fm_mh346lybm0000gn/T/gradio/fccba26d1a8b1a2c10f338eba922eb8dde157bc7/tmp7fjm7ml4.mp4
 def server_run(textContetn, audio_file, progress):
-    outputs = predict_full("small", textContetn, None, 5, 25, 0, 1.0, 3.0, progress=progress)
-    app.logger.info("music is saved at " + outputs)
-    return outputs
+    if (audio_file != 'none'):
+        outputs = server_run_melody(textContetn, audio_file, None)
+        app.logger.info("music is saved at " + outputs)
+        return outputs
+    else:
+        outputs = predict_full("small", textContetn, None, 10, 25, 0, 1.0, 3.0, progress=progress)
+        app.logger.info("music is saved at " + outputs)
+        return outputs
+
+def server_run_melody(textContetn, audio_file, progress):
+    try:
+        melody_waveform, sr = torchaudio.load(audio_file)
+        melody_waveform = melody_waveform.unsqueeze(0).repeat(2, 1, 1)
+
+        model = MusicGen.get_pretrained('melody')
+        model.set_generation_params(duration=15, top_k=5)
+        outputs = model.generate_with_chroma(
+        descriptions=[
+            textContetn,
+            textContetn,
+        ],
+        melody_wavs=melody_waveform,
+        melody_sample_rate=sr,
+        progress=True)
+        res = save_file(outputs=outputs)
+        app.logger.info("music is saved at " + res[0])
+    except:
+        return {'success': False}
+    return res[0]
+
 
 # flask web service
 app = Flask(__name__)
@@ -199,6 +229,7 @@ def index():
 def gen_music():
     app.logger.info("generating music...")
     prompt = request.args.get('prompt')
+    melodyPath = request.args.get('melody')
     if not prompt:
         jsonify({
             'success': False,
@@ -206,7 +237,7 @@ def gen_music():
             'error_msg': 'Invalid params, prompt should not be empty'
         })
         return
-    outs = server_run(prompt, None, None)
+    outs = server_run(prompt, melodyPath, None)
     response_data = {
         'success': True,
         'download_url': '/files/' + outs
@@ -216,6 +247,14 @@ def gen_music():
 @app.route('/files/<path:subpath>')
 def download_music(subpath):
     return send_from_directory('/', path=subpath, as_attachment=False)
+
+@app.route('/upload/<filename>', methods=['GET', 'POST'])
+def upload_file(filename):
+    filename = secure_filename(filename)
+    file_full_path = os.path.join('/Users/bytedance/Documents/aigc_music/assets', filename)
+    with open(file_full_path, "wb+") as f:
+        f.write(request.data)
+    return jsonify({'file_path': file_full_path})
 
 if __name__ == "__main__":
     # server_run("123", None, None)
